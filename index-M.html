@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI RÁDCE</title>
+    <style>
+   
+    :root { 
+        --primary: #e2774a; 
+        --accent: #FF4B2B; 
+        --glass: #ffffff;
+    }
+
+    body { 
+        font-family: 'Segoe UI', system-ui, sans-serif; 
+        background: linear-gradient(135deg, #959595 0%, #e7e7e7 100%); 
+        margin: 0; 
+        padding: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+
+    .box { 
+        width: 100%;
+        max-width: 1000px; 
+        background: var(--glass); 
+        padding: 30px 20px; 
+        border-radius: 40px; 
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15); 
+        box-sizing: border-box; 
+        text-align: center;
+    }
+
+    h1 { 
+        color: var(--primary); 
+        font-size: 2.2rem; 
+        margin: 0 0 10px 0;
+        font-weight: 700;
+    }
+
+    .instrukce {
+        color: #444;
+        font-size: 1.0rem;
+        margin-bottom: 20px;
+        font-weight: 500;
+    }
+
+    /* OBŘÍ TLAČÍTKO */
+    .mikrofon-btn { 
+        background: linear-gradient(145deg, #dfa162, #ff8800);
+        color: rgb(255, 255, 255); 
+        border: 10px solid rgb(255, 255, 255); /* Výrazný okraj */
+        width: 100vw; /* Zabere 85% šířky displeje */
+        height: 100vw; 
+        max-width: 500px; /* Ale na počítači se nezblázní */
+        max-height: 500px; 
+        border-radius: 50%; 
+        font-size: 2.5rem; /* Obří písmo */
+        font-weight: 900; 
+        cursor: pointer; 
+        margin: 10px auto; 
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 15px 35px rgba(226, 175, 74, 0.5);
+        transition: transform 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+
+    .mikrofon-btn span {
+
+        font-size: 5rem; /* Obří emoji */
+
+
+        margin-bottom: 10px;
+    
+    }
+    .mikrofon-btn:active {
+        transform: scale(0.92);
+    }
+
+    .mikrofon-btn.aktivni { 
+        background: linear-gradient(145deg, #FF4B2B, #D4145A); 
+        border-color: #fff;
+        animation: pulse-ring 1.2s infinite;
+    }
+
+    @keyframes pulse-ring {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 106, 80, 0.534); }
+        70% { transform: scale(1.1); box-shadow: 0 0 0 35px rgba(255, 255, 255, 0); }
+        100% { transform: scale(1); }
+    }
+
+    #stav { 
+        font-size: 1.5rem; 
+        font-weight: 800; 
+        color: #a8a8a8; 
+        margin-top: 20px;
+        text-transform: uppercase;
+    }
+
+    #textOdpovedi { 
+        font-size: 2.2rem; /* Trochu zvětšíme písmo, když už není jen velké */
+        line-height: 1.3;  /* Zvětšíme mezery mezi řádky pro lepší čtení */
+        color: #000000; 
+        font-weight: 600;  /* Písmo necháme tučnější */
+        text-transform: none; /* ZMĚNA: Tady musí být 'none' místo 'uppercase' */
+        text-align: left; 
+        background: #fdfdfd;
+        padding: 25px;
+        border-radius: 25px;
+        margin-top: 25px;
+        border: 5px solid var(--primary);
+        word-wrap: break-word;
+    }
+
+    /* Small Screen Adjustment */
+    @media (max-width: 400px) {
+        .box { padding: 30px 20px; }
+        .mikrofon-btn { width: 150px; height: 150px; }
+        #textOdpovedi { font-size: 1.8rem; }
+    }
+</style>
+</head>
+<body>
+
+<div class="box">
+    <h1>BABIČČIN MOUDRÝ RÁDCE</h1>
+    <button id="mikrofonBtn" class="mikrofon-btn" onclick="spustitSluch()">
+    MLUVIT
+    </button>
+    <div id="stav" style="font-size: 24px; font-weight: bold; color: #555;">PŘIPRAVENO</div>
+    <div id="textOdpovedi"></div>
+</div>
+<script>
+    const GEMINI_API_KEY = "AIzaSyCvy-DKnA-BubJmRGWGsP1Q54LZLcq6CEY"; 
+
+    const btn = document.getElementById('mikrofonBtn');
+    const stav = document.getElementById('stav');
+    const textOdpovedi = document.getElementById('textOdpovedi');
+
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = new Recognition();
+    r.lang = 'cs-CZ';
+    r.continuous = true; 
+
+    let timeoutPoslechu;
+
+    function spustitSluch() {
+        try {
+            r.start();
+            btn.classList.add('aktivni');
+            btn.innerHTML = "👂<br>POSLOUCHÁM";
+            stav.innerText = "TEĎ MLUVTE (MÁTE 5 VTEŘIN)...";
+
+            clearTimeout(timeoutPoslechu);
+            timeoutPoslechu = setTimeout(() => { r.stop(); }, 5000); 
+        } catch (e) { console.log("Hlas už běží."); }
+    }
+
+    r.onresult = (event) => {
+        let finalniText = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            finalniText += event.results[i][0].transcript;
+        }
+        if (finalniText.trim() !== "") {
+            stav.innerText = "SLYŠEL JSEM: " + finalniText;
+            poslatDoAI(finalniText);
+        }
+    };
+
+    r.onend = () => {
+        btn.classList.remove('aktivni');
+        btn.innerHTML = "🎤<br>MLUVIT";
+    };
+    
+    
+    async function poslatDoAI(otazka) {
+        // --- UKLÁDÁNÍ DO TABULKY (zůstává stejné) ---
+        const urlTabulky = "https://script.google.com/macros/s/AKfycbz2I1qtwLtsjKTLrs1unYlk0l6MopEy8PWT8cKfVd5Rv_9bdwRD2ntUx4lh3KUQdRatrQ/exec";
+        fetch(urlTabulky, { method: "POST", mode: "no-cors", body: JSON.stringify({ otazka: otazka }) });
+
+        stav.innerText = "PŘEMÝŠLÍM...";
+        textOdpovedi.style.display = "block";
+        textOdpovedi.innerText = "POČKEJTE PROSÍM...";
+
+        // ZMĚNA: Použijeme verzi "v1", která je u modelu 1.5 Flash nyní standardem
+        const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `Jsi seriózní seniorní a laskavý český asistent pro muže . 
+                            Mluv slušně, vyjmečně používej vtipy, které budou v kaptegorii vtipů se slovy.  
+                            Odpovídej stručně, česky a v souladu s českými gramatickými pravidly(speciálně skloňování).
+                            Vykej všem uživatelům.Když se tě někdo zeptá jestli si ukládáš informace z konverzací, řekni že ne.
+                            Nekonči žádnou zprávu otázkou.
+                            Popis uživatele: Je to starší pán který je spíše konzervativní a má rád koukání na sport v televizi. Moc nerozumí tecnologiím takže v této oblasti se na něj musí malinko pomaleji.Otázka od uživatele: ${otazka}`
+                        }]
+                    }]
+                })
+            });
+
+            const data = await response.json();
+
+            // Pokud verze v1 selže, zkusíme vypsat chybu
+            if (data.error) {
+                // Pokud to hlásí, že model nebyl nalezen, vypíšeme to srozumitelně
+                if (data.error.status === "NOT_FOUND") {
+                    throw new Error("Model Gemini 1.5 Flash nebyl na této adrese nalezen. Zkuste v URL změnit v1 na v1beta.");
+                }
+                throw new Error(data.error.message);
+            }
+
+            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                const aiText = data.candidates[0].content.parts[0].text;
+                textOdpovedi.innerText = aiText;
+
+                // HLASOVÝ VÝSTUP
+                const mluva = new SpeechSynthesisUtterance(aiText);
+                mluva.lang = 'cs-CZ';
+                const vsechnyHlasy = window.speechSynthesis.getVoices();
+                const zenskyHlas = vsechnyHlasy.find(h => h.lang.includes('cs') && (h.name.toLowerCase().includes('zuzana') || h.name.toLowerCase().includes('vlasta')));
+                if (zenskyHlas) mluva.voice = zenskyHlas;
+                mluva.rate = 1;
+                window.speechSynthesis.speak(mluva);
+                stav.innerText = "PŘIPRAVENO.";
+            } else {
+                throw new Error("Odpověď od AI byla prázdná.");
+            }
+
+        } catch (error) {
+            console.error("Detail chyby:", error);
+            textOdpovedi.innerText = "CHYBA: " + error.message;
+            stav.innerText = "ZKUSTE TO ZNOVU.";
+        }
+    }    
+
+
+
+
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+</script>
+
+</body>
+</html>
